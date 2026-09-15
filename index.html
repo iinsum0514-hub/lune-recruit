@@ -208,6 +208,36 @@ body {
 .copy-btn:active { transform: scale(0.98); }
 .copy-btn.copied { background: #4caf7d; }
 
+.btn-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+.btn-row .copy-btn { margin-top: 0; flex: 1; }
+
+.send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex: 1;
+  background: #302c47;
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 18px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.send-btn:hover { background: #221f36; }
+.send-btn:active { transform: scale(0.98); }
+.send-btn.sent { background: #4caf7d; }
+.send-btn.error { background: #d16565; }
+.send-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* ---------- rooms / speech ---------- */
 .bottom-grid {
   display: flex;
@@ -395,7 +425,10 @@ body {
     <div class="preview-wrap">
       <div class="preview-title">✦ プレビュー（そのままDiscordにコピペOK）</div>
       <div class="preview-box" id="preview"></div>
-      <button class="copy-btn" id="copyBtn">📋 コピーする</button>
+      <div class="btn-row">
+        <button class="copy-btn" id="copyBtn">📋 コピーする</button>
+        <button class="send-btn" id="sendBtn">🌙 Discordに送信する</button>
+      </div>
     </div>
 
     <div class="bottom-grid">
@@ -423,6 +456,12 @@ body {
 </div>
 
 <script>
+// ▼▼ ここにDiscordのWebhook URLを貼ってください ▼▼
+// サーバー設定 → 連携サービス → ウェブフック → 新しいウェブフック で作成し、
+// 投稿したいチャンネルを選んでURLをコピーして下に貼り付ける
+const WEBHOOK_URL = "ここにWebhook URLを貼る";
+// ▲▲ ここまで ▲▲
+
 const ids = ['mode','count','vc','room','target','rank','comment'];
 const els = {};
 ids.forEach(id => {
@@ -480,6 +519,43 @@ document.getElementById('copyBtn').addEventListener('click', () => {
     document.body.removeChild(ta);
     btn.textContent = '✅ コピーしました！';
     setTimeout(() => { btn.textContent = '📋 コピーする'; }, 1800);
+  });
+});
+
+document.getElementById('sendBtn').addEventListener('click', () => {
+  const text = document.getElementById('preview').textContent;
+  const btn = document.getElementById('sendBtn');
+
+  if (!WEBHOOK_URL || WEBHOOK_URL.includes('ここに')) {
+    alert('WebhookのURLがまだ設定されていません。index.html内のWEBHOOK_URLを設定してください。');
+    return;
+  }
+
+  btn.disabled = true;
+  btn.classList.remove('sent', 'error');
+  btn.textContent = '送信中...';
+
+  fetch(WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content: text })
+  })
+  .then(res => {
+    if (!res.ok) throw new Error('送信に失敗しました（' + res.status + '）');
+    btn.textContent = '✅ 送信しました！';
+    btn.classList.add('sent');
+  })
+  .catch(err => {
+    btn.textContent = '⚠️ 送信できませんでした';
+    btn.classList.add('error');
+    console.error(err);
+  })
+  .finally(() => {
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = '🌙 Discordに送信する';
+      btn.classList.remove('sent', 'error');
+    }, 2200);
   });
 });
 
